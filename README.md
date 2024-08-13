@@ -19,6 +19,30 @@
 ## Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/genre-galaxy.git
-   cd genre-galaxy
+    ```bash
+    git clone https://github.com/yourusername/genre-galaxy.git
+    cd genre-galaxy
+    ```
+
+2. Install the required Python packages:
+    ```bash
+    pip install -r requirements.txt
+    ```
+
+3. Run the application:
+    ```bash
+    python app.py
+    ```
+
+4. Open your browser and go to `http://127.0.0.1:8050/` to view the application.
+
+## Data Source
+
+The dataset used for this project was sourced from Kaggle's [Best Books 10K Multi-Genre Data](https://www.kaggle.com/datasets/ishikajohari/best-books-10k-multi-genre-data), which includes data on thousands of books from Goodreads.
+
+## Project Structure
+
+- **app.py**: Main application file containing the Dash setup and layout.
+- **create_graph.py**: Script for generating the network graph using NetworkX.
+- **process_data.py**: Script for cleaning and processing the Goodreads dataset.
+- **getStats.py**: Script for performing statistical analysis on genre pairs.
