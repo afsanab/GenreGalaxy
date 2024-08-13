@@ -84,8 +84,7 @@ for edge in G.edges(data=True):
         y=[y0, y1, None],
         line=dict(width=2, color=color),
         mode='lines',
-        hoverinfo='none',
-        showlegend=False
+        hoverinfo='none'
     ))
 
 
@@ -105,8 +104,7 @@ node_trace = go.Scatter(
         size=node_size,
         color='#7f7f7f',  # Uniform gray color for nodes
         line_width=2
-    ),
-    showlegend=False
+    )
 )
 
 # Function to highlight the genres of a selected book
@@ -127,22 +125,21 @@ def highlight_book_genres(book_title, books_data, G):
     
     return node_colors
 
-# Define your edge color legend outside the callback
-edge_color_legend = [
-    ('rgba(247, 252, 185, 0.6)', '<10 co-occurrences'),
-    ('rgba(255, 204, 102, 0.6)', '10-25 co-occurrences'),
-    ('rgba(255, 153, 204, 0.6)', '25-50 co-occurrences'),
-    ('rgba(255, 102, 255, 0.6)', '50-100 co-occurrences'),
-    ('rgba(139, 0, 255, 0.6)', '>100 co-occurrences')
-]
+legend_traces = []
+co_occurrence_categories = [(10, 'rgba(247, 252, 185, 0.6)'), 
+                            (25, 'rgba(255, 204, 102, 0.6)'), 
+                            (50, 'rgba(255, 153, 204, 0.6)'), 
+                            (100, 'rgba(255, 102, 255, 0.6)'), 
+                            (float('inf'), 'rgba(139, 0, 255, 0.6)')]
 
-# Create the legend traces
-legend_traces = [go.Scatter(
-    x=[None], y=[None], mode='lines',
-    line=dict(color=color, width=10),
-    name=description,
-    showlegend=True
-) for color, description in edge_color_legend]
+for count, color in co_occurrence_categories:
+    legend_traces.append(go.Scatter(
+        x=[None],
+        y=[None],
+        mode='lines',
+        line=dict(color=color, width=10),
+        name=f'{count if count != float("inf") else "100+"} co-occurrences'
+    ))
 
 @app.callback(
     Output('genre-graph', 'figure'),
@@ -191,11 +188,10 @@ def update_graph(search_value):
     # Update the node trace with new colors
     node_trace.marker.color = node_colors
 
-    # Then, when you create the figure, include these legend_traces
-    fig = go.Figure(data=edge_traces + [node_trace] + legend_traces, layout=go.Layout(
+    # Create the figure with updated traces
+    fig = go.Figure(data=updated_edge_traces + [node_trace], layout=go.Layout(
         title='Network Graph of Literary Genres',
-        showlegend=True,
-        legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01),
+        showlegend=False,
         hovermode='closest',
         margin=dict(b=20, l=5, r=5, t=40),
         xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
@@ -203,7 +199,6 @@ def update_graph(search_value):
     ))
 
     return fig
-
 
 # Run the Dash app
 if __name__ == '__main__':
