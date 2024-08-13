@@ -1,2 +1,2 @@
 # GenreGalaxy
-https://afsanab.github.io/GenreGalaxy.github.io
+https://afsanab.github.io/GenreGalaxy.github.io/
