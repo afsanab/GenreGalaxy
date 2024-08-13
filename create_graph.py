@@ -144,37 +144,40 @@ for count, color in co_occurrence_categories:
 
 # Correctly maintain node sizes based on the genre popularity
 node_sizes = [10 + G.nodes[node]['size'] / 100 for node in G.nodes()]  # Scale size appropriately
-
 @app.callback(
     Output('genre-graph', 'figure'),
     [Input('genre-graph', 'clickData'), Input('search-bar', 'value')]
 )
 def update_graph(clickData, search_value):
-    node_colors = ['#7f7f7f' for _ in G.nodes()]  # Default gray color
-    edge_colors = [get_edge_color(edge[2]['count']) for edge in G.edges(data=True)]  # Original function to set color
+    # Set default colors for nodes and edges
+    node_colors = ['#7f7f7f' for _ in G.nodes()]
+    edge_colors = [get_edge_color(edge[2]['count']) for edge in G.edges(data=True)]
     node_sizes = [10 + G.nodes[node]['size'] / 100 for node in G.nodes()]  # Maintain size based on popularity
 
+    # Click event handling
     if clickData:
         # Get the node name from clickData
         node_name = clickData['points'][0]['customdata']
         connected_nodes = list(nx.all_neighbors(G, node_name)) + [node_name]
 
-        # Update node colors
-        node_colors = ['#FFFF00' if node in connected_nodes else '#7f7f7f' for node in G.nodes()]
+        # Update node colors for connected nodes and grey out others
+        node_colors = ['#FFFF00' if node in connected_nodes else 'rgba(211, 211, 211, 0.5)' for node in G.nodes()]
 
-        # Update edge colors only for edges between connected nodes
+        # Update edge colors for connections between these nodes, grey out others
         for i, edge in enumerate(G.edges(data=True)):
             if edge[0] in connected_nodes and edge[1] in connected_nodes:
-                edge_colors[i] = '#FFFF00'  # Highlight with a bright yellow
+                edge_colors[i] = '#FFFF00'  # Highlight color for edges
+            else:
+                edge_colors[i] = 'rgba(211, 211, 211, 0.5)'  # Grey out unrelated edges
 
     elif search_value:
-        # Handle search-based highlighting
+        # Handle search-based highlighting, similar logic as click handling but based on search results
         book_genres_colors = highlight_book_genres(search_value, books_data, G)
         if book_genres_colors:
-            node_colors = [book_genres_colors.get(node, '#7f7f7f') for node in G.nodes()]
+            node_colors = [book_genres_colors.get(node, 'rgba(211, 211, 211, 0.5)') for node in G.nodes()]
             edge_colors = ['rgba(211, 211, 211, 0.1)' if not (book_genres_colors.get(edge[0]) == '#FFFF00' and book_genres_colors.get(edge[1]) == '#FFFF00') else '#FFFF00' for edge in G.edges()]
 
-    # Create the figure
+    # Create the figure and layout configuration
     fig = go.Figure(layout=go.Layout(
         title='Network Graph of Literary Genres',
         showlegend=False,
@@ -214,6 +217,7 @@ def update_graph(clickData, search_value):
     fig.add_trace(node_trace)
 
     return fig
+
 
 
 # Run the Dash app
