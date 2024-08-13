@@ -20,8 +20,8 @@
 
 1. Clone the repository:
     ```bash
-    git clone https://github.com/yourusername/genre-galaxy.git
-    cd genre-galaxy
+    git clone https://github.com/afsanab/genregalaxy.git
+    cd genregalaxy
     ```
 
 2. Install the required Python packages:
@@ -45,4 +45,4 @@ The dataset used for this project was sourced from Kaggle's [Best Books 10K Mult
 - **app.py**: Main application file containing the Dash setup and layout.
 - **create_graph.py**: Script for generating the network graph using NetworkX.
 - **process_data.py**: Script for cleaning and processing the Goodreads dataset.
-- **getStats.py**: Script for performing statistical analysis on genre pairs.
+- **calculate_stats.py**: Script for performing statistical analysis on genre pairs.
