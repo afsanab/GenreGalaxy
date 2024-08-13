@@ -4,10 +4,9 @@ import plotly.graph_objs as go
 import ast
 
 # Load your data
-# Assuming you have a file named 'goodreads_genre_pairs.csv' and another for genre popularity
 genre_pairs_df = pd.read_csv('goodreads_genre_pairs.csv')
 books_data = pd.read_csv('goodreads_data.csv')
-books_data['Genres'] = books_data['Genres'].apply(ast.literal_eval)  # convert string of list to actual list
+books_data['Genres'] = books_data['Genres'].apply(ast.literal_eval)  # Convert string list to actual list
 
 # Initialize the graph
 G = nx.Graph()
@@ -16,70 +15,79 @@ G = nx.Graph()
 genre_count = {}
 for genres in books_data['Genres']:
     for genre in genres:
-        if genre in genre_count:
-            genre_count[genre] = genre_count[genre] + 1
-        else:
-            genre_count[genre] = 1
+        genre_count[genre] = genre_count.get(genre, 0) + 1
 
 # Add nodes with genre popularity as size
 for genre, count in genre_count.items():
     G.add_node(genre, size=count)
 
-# Add edges from the pairs DataFrame
-for index, row in genre_pairs_df.iterrows():
-    if G.has_node(row['Genre1']) and G.has_node(row['Genre2']):
-        G.add_edge(row['Genre1'], row['Genre2'])
+# Define a threshold for including edges
+threshold = 10  # Only consider genre pairs with at least this many co-occurrences
 
-# Network layout
-pos = nx.spring_layout(G)  # Kamada-Kawai layout for large graphs if necessary
+# Function to determine color based on co-occurrence count
+def get_edge_color(count):
+    if count < 10:
+        return '#f7fcb9'  # Yellow
+    elif count <= 25:
+        return '#ffcc66'  # Light Orange
+    elif count <= 50:
+        return '#ff99cc'  # Pink
+    elif count <= 100:
+        return '#ff66ff'  # Magenta
+    else:
+        return '#8b00ff'  # Dark Purple
+
+# Add edges from the pairs DataFrame considering the threshold
+genre_pair_counts = genre_pairs_df.groupby(['Genre1', 'Genre2']).size()
+for (genre1, genre2), count in genre_pair_counts.items():
+    if count >= threshold:
+        if G.has_node(genre1) and G.has_node(genre2):
+            G.add_edge(genre1, genre2, count=count)
+
+# Position the nodes using a layout
+pos = nx.kamada_kawai_layout(G)  # This layout is generally better for larger graphs
 
 # Edge traces
-x_edges = []
-y_edges = []
-for edge in G.edges():
+edge_traces = []
+for edge in G.edges(data=True):
     x0, y0 = pos[edge[0]]
     x1, y1 = pos[edge[1]]
-    x_edges.extend([x0, x1, None])
-    y_edges.extend([y0, y1, None])
-
-edge_trace = go.Scatter(
-    x=x_edges,
-    y=y_edges,
-    line=dict(width=0.5, color='#888'),
-    hoverinfo='none',
-    mode='lines')
+    color = get_edge_color(edge[2]['count'])
+    edge_traces.append(go.Scatter(
+        x=[x0, x1, None],
+        y=[y0, y1, None],
+        line=dict(width=2, color=color),
+        mode='lines',
+        hoverinfo='none'
+    ))
 
 # Node traces
-x_nodes = []
-y_nodes = []
-node_texts = []
-node_sizes = []
-for node in G.nodes():
-    x_nodes.append(pos[node][0])
-    y_nodes.append(pos[node][1])
-    node_texts.append(f'{node} ({G.nodes[node]["size"]})')
-    node_sizes.append(10 + G.nodes[node]['size'] / 100)  # Adjust node size scaling as needed
+node_x = [pos[node][0] for node in G.nodes()]
+node_y = [pos[node][1] for node in G.nodes()]
+node_text = [f'{node} ({G.nodes[node]["size"]})' for node in G.nodes()]
+node_size = [10 + G.nodes[node]['size'] / 100 for node in G.nodes()]
 
 node_trace = go.Scatter(
-    x=x_nodes,
-    y=y_nodes,
-    text=node_texts,
+    x=node_x, 
+    y=node_y,
+    text=node_text,
     mode='markers',
     hoverinfo='text',
     marker=dict(
-        showscale=True,
-        colorscale='YlGnBu',
-        size=node_sizes,
-        color=[],
-        line=dict(width=2)))
+        size=node_size,
+        color='#7f7f7f',  # Uniform gray color for nodes
+        line_width=2
+    )
+)
 
 # Create the figure and add the traces
-fig = go.Figure(data=[edge_trace, node_trace], layout=go.Layout(
+fig = go.Figure(data=edge_traces + [node_trace], layout=go.Layout(
     title='Network Graph of Literary Genres',
     showlegend=False,
     hovermode='closest',
     margin=dict(b=20, l=5, r=5, t=40),
     xaxis=dict(showgrid=False, zeroline=False, showticklabels=False),
-    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)))
+    yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
+))
 
 fig.show()
