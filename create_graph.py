@@ -11,7 +11,7 @@ app = dash.Dash(__name__)
 
 # Load your data
 genre_pairs_df = pd.read_csv('goodreads_genre_pairs.csv')
-books_data = pd.read_csv('goodreads_data.csv')
+books_data = pd.read_csv('cleaned_goodreads_data.csv')
 books_data['Genres'] = books_data['Genres'].apply(ast.literal_eval)  # Convert string list to actual list
 
 book_options = [{'label': book, 'value': book} for book in books_data['Book'].unique()]
@@ -43,7 +43,7 @@ filtered_genres = {genre: count for genre, count in genre_count.items() if count
 
 # Add nodes with genre popularity as size, only for genres with at least 5 books
 for genre, count in filtered_genres.items():
-    G.add_node(genre, size=count)
+    G.add_node(genre, size=count, genres=[genre])
 
 
 # Function to determine color based on co-occurrence count
@@ -95,16 +95,17 @@ node_text = [f'{node} ({G.nodes[node]["size"]})' for node in G.nodes()]
 node_size = [10 + G.nodes[node]['size'] / 100 for node in G.nodes()]
 
 node_trace = go.Scatter(
-    x=node_x, 
+    x=node_x,
     y=node_y,
     text=node_text,
-    mode='markers',
+    mode='markers+text',
     hoverinfo='text',
     marker=dict(
         size=node_size,
-        color='#7f7f7f',  # Uniform gray color for nodes
+        color='#7f7f7f',  # Default color, will be updated interactively
         line_width=2
-    )
+    ),
+    customdata=list(G.nodes())  # Add node names as custom data for easy access
 )
 
 # Function to highlight the genres of a selected book
@@ -141,55 +142,40 @@ for count, color in co_occurrence_categories:
         name=f'{count if count != float("inf") else "100+"} co-occurrences'
     ))
 
+# Correctly maintain node sizes based on the genre popularity
+node_sizes = [10 + G.nodes[node]['size'] / 100 for node in G.nodes()]  # Scale size appropriately
+
 @app.callback(
     Output('genre-graph', 'figure'),
-    [Input('search-bar', 'value')]
+    [Input('genre-graph', 'clickData'), Input('search-bar', 'value')]
 )
-def update_graph(search_value):
-    # Start with the original edge colors based on co-occurrences
-    current_edge_colors = list(edge_colors)  # Copy the original edge colors
+def update_graph(clickData, search_value):
+    node_colors = ['#7f7f7f' for _ in G.nodes()]  # Default gray color
+    edge_colors = [get_edge_color(edge[2]['count']) for edge in G.edges(data=True)]  # Original function to set color
+    node_sizes = [10 + G.nodes[node]['size'] / 100 for node in G.nodes()]  # Maintain size based on popularity
 
-    # Default all node colors to grey
-    node_colors = ['#7f7f7f' for _ in G.nodes()]
+    if clickData:
+        # Get the node name from clickData
+        node_name = clickData['points'][0]['customdata']
+        connected_nodes = list(nx.all_neighbors(G, node_name)) + [node_name]
 
-    if search_value:
-        # Attempt to fetch the genres associated with the book
+        # Update node colors
+        node_colors = ['#FFFF00' if node in connected_nodes else '#7f7f7f' for node in G.nodes()]
+
+        # Update edge colors only for edges between connected nodes
+        for i, edge in enumerate(G.edges(data=True)):
+            if edge[0] in connected_nodes and edge[1] in connected_nodes:
+                edge_colors[i] = '#FFFF00'  # Highlight with a bright yellow
+
+    elif search_value:
+        # Handle search-based highlighting
         book_genres_colors = highlight_book_genres(search_value, books_data, G)
         if book_genres_colors:
-            # Update node colors for genres related to the book
             node_colors = [book_genres_colors.get(node, '#7f7f7f') for node in G.nodes()]
+            edge_colors = ['rgba(211, 211, 211, 0.1)' if not (book_genres_colors.get(edge[0]) == '#FFFF00' and book_genres_colors.get(edge[1]) == '#FFFF00') else '#FFFF00' for edge in G.edges()]
 
-            # Set all edges to a more transparent gray to ensure we don't incorrectly color unrelated edges
-            for i, edge in enumerate(G.edges()):
-                current_edge_colors[i] = 'rgba(211, 211, 211, 0.1)'  # More transparent gray for non-highlighted edges
-
-            # Highlight edges between the book's genres
-            for i, edge in enumerate(G.edges(data=True)):
-                if edge[0] in book_genres_colors and edge[1] in book_genres_colors:
-                    if book_genres_colors[edge[0]] == '#FFFF00' and book_genres_colors[edge[1]] == '#FFFF00':
-                        current_edge_colors[i] = '#FFFF00'  # Bright yellow for highlighted edges
-        else:
-            # If no genres found for the book, ensure all edges are more transparent
-            current_edge_colors = ['rgba(211, 211, 211, 0.1)' for _ in G.edges()]
-
-    # Generate edge traces with updated colors
-    updated_edge_traces = []
-    for i, edge in enumerate(G.edges(data=True)):
-        x0, y0 = pos[edge[0]]
-        x1, y1 = pos[edge[1]]
-        updated_edge_traces.append(go.Scatter(
-            x=[x0, x1, None],
-            y=[y0, y1, None],
-            line=dict(width=2, color=current_edge_colors[i]),
-            mode='lines',
-            hoverinfo='none'
-        ))
-
-    # Update the node trace with new colors
-    node_trace.marker.color = node_colors
-
-    # Create the figure with updated traces
-    fig = go.Figure(data=updated_edge_traces + [node_trace], layout=go.Layout(
+    # Create the figure
+    fig = go.Figure(layout=go.Layout(
         title='Network Graph of Literary Genres',
         showlegend=False,
         hovermode='closest',
@@ -198,7 +184,37 @@ def update_graph(search_value):
         yaxis=dict(showgrid=False, zeroline=False, showticklabels=False)
     ))
 
+    # Add edge traces first
+    for i, edge in enumerate(G.edges(data=True)):
+        x0, y0 = pos[edge[0]]
+        x1, y1 = pos[edge[1]]
+        fig.add_trace(go.Scatter(
+            x=[x0, x1, None],
+            y=[y0, y1, None],
+            line=dict(width=2, color=edge_colors[i]),
+            mode='lines',
+            hoverinfo='none'
+        ))
+
+    # Add node trace last
+    node_trace = go.Scatter(
+        x=[pos[node][0] for node in G.nodes()],
+        y=[pos[node][1] for node in G.nodes()],
+        text=[f'{node} ({G.nodes[node]["size"]})' for node in G.nodes()],
+        mode='markers',
+        hoverinfo='text',
+        marker=dict(
+            size=node_sizes,
+            color=node_colors,
+            line_width=2
+        ),
+        customdata=list(G.nodes())
+    )
+
+    fig.add_trace(node_trace)
+
     return fig
+
 
 # Run the Dash app
 if __name__ == '__main__':
