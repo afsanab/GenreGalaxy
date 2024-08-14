@@ -31,7 +31,7 @@
 
 3. Run the application:
     ```bash
-    python app.py
+    python create_graph.py
     ```
 
 4. Open your browser and go to `http://127.0.0.1:8050/` to view the application.
@@ -42,7 +42,6 @@ The dataset used for this project was sourced from Kaggle's [Best Books 10K Mult
 
 ## Project Structure
 
-- **app.py**: Main application file containing the Dash setup and layout.
-- **create_graph.py**: Script for generating the network graph using NetworkX.
+- **create_graph.py**: Main application file containing the Dash setup and layout and script for generating the network graph using NetworkX.
 - **process_data.py**: Script for cleaning and processing the Goodreads dataset.
 - **calculate_stats.py**: Script for performing statistical analysis on genre pairs.
