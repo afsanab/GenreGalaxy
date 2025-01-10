@@ -5,8 +5,18 @@ import networkx as nx
 import plotly.graph_objs as go
 import ast
 import re
+import os
+import subprocess
 
 app = Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
+
+
+# Check if processed files exist
+if not os.path.exists('cleaned_goodreads_data.csv') or not os.path.exists('goodreads_genre_pairs.csv'):
+    print("Processed data files not found. Running process_data.py...")
+    subprocess.run(['python', 'process_data.py'], check=True)
+else:
+    print("Processed data files found. Skipping data processing.")
 
 # Load your data
 genre_pairs_df = pd.read_csv('goodreads_genre_pairs.csv')
