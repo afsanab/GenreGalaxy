@@ -3,3 +3,4 @@ dash-bootstrap-components
 networkx
 pandas
 plotly
+scipy
