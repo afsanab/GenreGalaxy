@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: genre-galaxy
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python create_graph.py
+    plan: free
