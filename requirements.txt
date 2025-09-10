@@ -4,3 +4,4 @@ networkx
 pandas
 plotly
 scipy
+statsmodels
